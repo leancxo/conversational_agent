@@ -7,6 +7,7 @@ import logging
 from pathlib import Path
 import json
 from .ai.dia_agent import DiaAgent
+import os
 
 # Setup logging
 logging.basicConfig(
@@ -63,6 +64,8 @@ async def websocket_endpoint(websocket: WebSocket):
                 if require_audio:
                     try:
                         audio_path = dia_agent.generate_speech(response_text)
+                        # Extract just the filename from the path
+                        audio_path = os.path.basename(audio_path)
                     except Exception as e:
                         logger.error(f"Failed to generate speech: {e}")
                 
@@ -83,7 +86,10 @@ async def websocket_endpoint(websocket: WebSocket):
     except Exception as e:
         logger.error(f"WebSocket error: {e}")
     finally:
-        await websocket.close()
+        try:
+            await websocket.close()
+        except Exception as e:
+            logger.error(f"Error closing WebSocket: {e}")
 
 @app.get("/health")
 async def health_check():
