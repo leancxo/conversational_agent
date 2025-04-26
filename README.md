@@ -1,63 +1,78 @@
 # Conversational Agent
 
-A real-time chat application with WebSocket support, text-to-speech capabilities, and a modern web interface.
+A real-time conversational agent that uses the Dia model for speech synthesis and natural language processing.
 
 ## Features
 
-- Real-time chat using WebSocket
-- Text-to-speech support
-- Voice input capability
-- Modern, responsive UI
-- FastAPI backend
-- Pytest-based testing suite
+- Real-time speech synthesis using Dia model
+- WebSocket-based communication
+- Error handling and resource cleanup
+- Configurable settings via environment variables
 
-## Setup
+## Prerequisites
+
+- Python 3.8 or higher
+- pip (Python package manager)
+- Virtual environment (recommended)
+
+## Installation
 
 1. Clone the repository:
 ```bash
-git clone https://github.com/[your-username]/Conversational_Agent.git
-cd Conversational_Agent
+git clone https://github.com/yourusername/conversational-agent.git
+cd conversational-agent
 ```
 
 2. Create and activate a virtual environment:
 ```bash
-python -m venv .venv
-source .venv/bin/activate  # On Windows: .venv\Scripts\activate
+python -m venv venv
+source venv/bin/activate  # On Windows: venv\Scripts\activate
 ```
 
 3. Install dependencies:
 ```bash
-pip install -e .
+pip install -r requirements.txt
 ```
 
-4. Run the application:
+## Configuration
+
+Create a `.env` file in the project root with the following variables:
+```
+DIA_MODEL_PATH=/path/to/your/dia/model
+```
+
+## Usage
+
+1. Start the server:
 ```bash
-uvicorn src.main:app --reload
+python src/main.py
 ```
 
-The application will be available at http://localhost:8000
+2. The server will start on `http://localhost:8000` by default.
 
-## Testing
+3. Connect to the WebSocket endpoint at `ws://localhost:8000/ws` to start a conversation.
 
-Run the test suite:
-```bash
-pytest tests/ -v
-```
+## API Endpoints
 
-## Project Structure
+- `GET /`: Health check endpoint
+- `GET /ws`: WebSocket endpoint for real-time communication
 
-```
-├── src/
-│   ├── ai/              # AI components
-│   ├── ui/              # Frontend files
-│   │   ├── static/      # Static assets (CSS, JS)
-│   │   └── templates/   # HTML templates
-│   └── main.py          # FastAPI application
-├── tests/               # Test suite
-├── requirements.txt     # Project dependencies
-└── setup.py            # Package configuration
-```
+## Error Handling
+
+The agent includes comprehensive error handling for:
+- Model initialization failures
+- Speech generation errors
+- WebSocket connection issues
+- Resource cleanup
+
+## Contributing
+
+1. Fork the repository
+2. Create a feature branch
+3. Commit your changes
+4. Push to the branch
+5. Create a Pull Request
 
 ## License
 
-MIT 
+This project is licensed under the MIT License - see the LICENSE file for details. 

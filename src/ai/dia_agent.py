@@ -7,6 +7,7 @@ from pathlib import Path
 import logging
 from typing import Optional
 from dia.model import Dia
+import shutil
 
 logger = logging.getLogger(__name__)
 
@@ -19,6 +20,7 @@ class DiaAgent:
         """
         self.model = None
         self.compute_dtype = compute_dtype
+        self.temp_files = set()
         self.initialize_model()
         
     def initialize_model(self):
@@ -44,13 +46,16 @@ class DiaAgent:
             Path to the generated audio file
         """
         try:
+            if not text.strip():
+                raise ValueError("Input text cannot be empty")
+                
             # Format text for dialogue generation
             formatted_text = f"[S1] {text}"
             
-            # Generate audio
+            # Generate audio (disabled torch compilation for Metal compatibility)
             audio_data = self.model.generate(
                 formatted_text,
-                use_torch_compile=True,
+                use_torch_compile=False,  # Disabled for Metal compatibility
                 verbose=True
             )
             
@@ -58,6 +63,7 @@ class DiaAgent:
             if output_path is None:
                 temp_dir = tempfile.gettempdir()
                 output_path = os.path.join(temp_dir, f"dia_output_{hash(text)}.mp3")
+                self.temp_files.add(output_path)
             
             # Save audio
             self.model.save_audio(output_path, audio_data)
@@ -78,6 +84,28 @@ class DiaAgent:
         Returns:
             Response text
         """
-        # For now, just echo the message
-        # In a real implementation, this would use a language model
-        return f"I received your message: {message}" 
+        try:
+            if not message.strip():
+                return "I didn't receive any message. Please try again."
+                
+            # For now, just echo the message
+            # In a real implementation, this would use a language model
+            return f"I received your message: {message}"
+            
+        except Exception as e:
+            logger.error(f"Error processing message: {e}")
+            return "Sorry, I encountered an error processing your message."
+    
+    def cleanup(self):
+        """Clean up temporary files."""
+        for file_path in self.temp_files:
+            try:
+                if os.path.exists(file_path):
+                    os.remove(file_path)
+            except Exception as e:
+                logger.error(f"Failed to remove temporary file {file_path}: {e}")
+        self.temp_files.clear()
+        
+    def __del__(self):
+        """Cleanup when the object is destroyed."""
+        self.cleanup() 

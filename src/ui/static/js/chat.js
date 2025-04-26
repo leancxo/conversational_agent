@@ -1,171 +1,138 @@
-class ChatApp {
-    constructor() {
-        this.messageInput = document.getElementById('message-input');
-        this.sendButton = document.getElementById('send-btn');
-        this.voiceButton = document.getElementById('voice-input-btn');
-        this.chatMessages = document.getElementById('chat-messages');
-        this.statusText = document.getElementById('status-text');
-        this.statusLight = document.getElementById('status-light');
-        
-        this.ws = null;
-        this.recognition = null;
-        this.synthesis = window.speechSynthesis;
-        this.isAutoSending = false;
-        this.audioPlayer = new Audio();
-        
-        this.initializeWebSocket();
-        this.initializeSpeechRecognition();
-        this.setupEventListeners();
-    }
+// WebSocket connection
+let ws = null;
+let isConnected = false;
+let isTTSEnabled = true;
+
+// DOM elements
+const chatMessages = document.getElementById('chat-messages');
+const messageInput = document.getElementById('message-input');
+const sendButton = document.getElementById('send-btn');
+const voiceInputButton = document.getElementById('voice-input-btn');
+const ttsToggle = document.getElementById('tts-toggle');
+const statusLight = document.getElementById('status-light');
+const statusText = document.getElementById('status-text');
+
+// Initialize WebSocket connection
+function connect() {
+    ws = new WebSocket(`ws://${window.location.host}/ws`);
     
-    initializeWebSocket() {
-        const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-        const wsUrl = `${protocol}//${window.location.host}/ws`;
-        
-        this.ws = new WebSocket(wsUrl);
-        
-        this.ws.onopen = () => {
-            this.updateConnectionStatus(true);
-        };
-        
-        this.ws.onclose = () => {
-            this.updateConnectionStatus(false);
-            setTimeout(() => this.initializeWebSocket(), 3000);
-        };
-        
-        this.ws.onerror = (error) => {
-            console.error('WebSocket error:', error);
-            this.updateConnectionStatus(false);
-        };
-        
-        this.ws.onmessage = async (event) => {
-            try {
-                const response = JSON.parse(event.data);
-                this.addMessage(response.text, 'agent');
-                
-                if (response.audio_path) {
-                    const audioUrl = `/audio/${response.audio_path.split('/').pop()}`;
-                    this.audioPlayer.src = audioUrl;
-                    await this.audioPlayer.play();
-                }
-            } catch (error) {
-                console.error('Error processing message:', error);
+    ws.onopen = () => {
+        isConnected = true;
+        updateStatus('Connected', 'connected');
+    };
+    
+    ws.onmessage = (event) => {
+        if (event.data instanceof Blob) {
+            // Handle audio data
+            if (isTTSEnabled) {
+                const audio = new Audio(URL.createObjectURL(event.data));
+                audio.play();
             }
-        };
-    }
-    
-    initializeSpeechRecognition() {
-        if ('webkitSpeechRecognition' in window) {
-            this.recognition = new webkitSpeechRecognition();
-            this.recognition.continuous = false;
-            this.recognition.interimResults = false;
-            
-            this.recognition.onresult = (event) => {
-                const transcript = event.results[0][0].transcript;
-                this.messageInput.value = transcript;
-                if (this.isAutoSending) {
-                    this.sendMessage();
-                }
-            };
-            
-            this.recognition.onerror = (event) => {
-                console.error('Speech recognition error:', event.error);
-                this.voiceButton.classList.remove('recording');
-                this.isAutoSending = false;
-            };
-            
-            this.recognition.onend = () => {
-                this.voiceButton.classList.remove('recording');
-                this.isAutoSending = false;
-            };
         } else {
-            this.voiceButton.style.display = 'none';
-            console.warn('Speech recognition not supported');
-        }
-    }
-    
-    setupEventListeners() {
-        this.sendButton.addEventListener('click', () => this.sendMessage());
-        
-        this.messageInput.addEventListener('keypress', (event) => {
-            if (event.key === 'Enter' && !event.shiftKey) {
-                event.preventDefault();
-                this.sendMessage();
+            // Handle text messages
+            const message = JSON.parse(event.data);
+            if (message.error) {
+                addMessage(message.error, 'agent', true);
             }
-        });
-        
-        this.voiceButton.addEventListener('click', () => this.toggleVoiceInput());
-        
-        this.audioPlayer.addEventListener('play', () => {
-            this.updateAgentStatus('Speaking');
-        });
-        
-        this.audioPlayer.addEventListener('ended', () => {
-            this.updateAgentStatus('Connected');
-        });
-        
-        this.audioPlayer.addEventListener('error', (e) => {
-            console.error('Audio playback error:', e);
-            this.updateAgentStatus('Connected');
-        });
-    }
-    
-    sendMessage() {
-        const message = this.messageInput.value.trim();
-        if (message && this.ws.readyState === WebSocket.OPEN) {
-            this.addMessage(message, 'user');
-            
-            const data = {
-                text: message,
-                require_audio: true
-            };
-            this.ws.send(JSON.stringify(data));
-            
-            this.messageInput.value = '';
-            this.updateAgentStatus('Processing');
         }
-    }
+    };
     
-    addMessage(message, sender) {
-        const messageElement = document.createElement('div');
-        messageElement.classList.add('message', sender);
-        messageElement.textContent = message;
-        
-        this.chatMessages.appendChild(messageElement);
-        this.chatMessages.scrollTop = this.chatMessages.scrollHeight;
-    }
+    ws.onclose = () => {
+        isConnected = false;
+        updateStatus('Disconnected', 'disconnected');
+        setTimeout(connect, 1000);
+    };
     
-    toggleVoiceInput() {
-        if (!this.recognition) return;
-        
-        if (this.voiceButton.classList.contains('recording')) {
-            this.recognition.stop();
-        } else {
-            if (this.synthesis) {
-                this.synthesis.cancel();
-            }
-            if (this.audioPlayer) {
-                this.audioPlayer.pause();
-            }
-            this.recognition.start();
-            this.voiceButton.classList.add('recording');
-            this.isAutoSending = true;
-        }
+    ws.onerror = (error) => {
+        console.error('WebSocket error:', error);
+        updateStatus('Error', 'error');
+    };
+}
+
+// Update connection status
+function updateStatus(text, className) {
+    statusText.textContent = text;
+    statusLight.className = `status-light ${className}`;
+}
+
+// Add message to chat
+function addMessage(text, sender, isError = false) {
+    const messageDiv = document.createElement('div');
+    messageDiv.className = `message ${sender}-message`;
+    if (isError) {
+        messageDiv.style.color = 'red';
     }
-    
-    updateConnectionStatus(connected) {
-        this.statusText.textContent = connected ? 'Connected' : 'Disconnected';
-        this.statusLight.classList.toggle('connected', connected);
-        this.sendButton.disabled = !connected;
-    }
-    
-    updateAgentStatus(status) {
-        this.statusText.textContent = status;
-        this.statusLight.classList.toggle('processing', status === 'Processing');
-        this.statusLight.classList.toggle('speaking', status === 'Speaking');
+    messageDiv.textContent = text;
+    chatMessages.appendChild(messageDiv);
+    chatMessages.scrollTop = chatMessages.scrollHeight;
+}
+
+// Send message
+function sendMessage() {
+    const text = messageInput.value.trim();
+    if (text && ws && ws.readyState === WebSocket.OPEN) {
+        ws.send(JSON.stringify({ text }));
+        addMessage(text, 'user');
+        messageInput.value = '';
     }
 }
 
-document.addEventListener('DOMContentLoaded', () => {
-    new ChatApp();
-}); 
+// Toggle TTS
+function toggleTTS() {
+    isTTSEnabled = !isTTSEnabled;
+    ttsToggle.classList.toggle('active', isTTSEnabled);
+}
+
+// Voice input
+let mediaRecorder = null;
+let audioChunks = [];
+
+async function startVoiceInput() {
+    try {
+        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        mediaRecorder = new MediaRecorder(stream);
+        
+        mediaRecorder.ondataavailable = (event) => {
+            audioChunks.push(event.data);
+        };
+        
+        mediaRecorder.onstop = async () => {
+            const audioBlob = new Blob(audioChunks, { type: 'audio/wav' });
+            // Here you would typically send the audio to a speech-to-text service
+            // For now, we'll just show a placeholder message
+            addMessage('Voice input received (STT not implemented)', 'user');
+            audioChunks = [];
+        };
+        
+        mediaRecorder.start();
+        voiceInputButton.classList.add('recording');
+    } catch (error) {
+        console.error('Error accessing microphone:', error);
+        addMessage('Error accessing microphone', 'agent', true);
+    }
+}
+
+function stopVoiceInput() {
+    if (mediaRecorder && mediaRecorder.state === 'recording') {
+        mediaRecorder.stop();
+        voiceInputButton.classList.remove('recording');
+    }
+}
+
+// Event listeners
+sendButton.addEventListener('click', sendMessage);
+messageInput.addEventListener('keypress', (e) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+        e.preventDefault();
+        sendMessage();
+    }
+});
+
+ttsToggle.addEventListener('click', toggleTTS);
+
+voiceInputButton.addEventListener('mousedown', startVoiceInput);
+voiceInputButton.addEventListener('mouseup', stopVoiceInput);
+voiceInputButton.addEventListener('mouseleave', stopVoiceInput);
+
+// Initialize
+connect(); 

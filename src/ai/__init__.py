@@ -1,3 +1,3 @@
 """
-AI module for the Conversational Agent.
+AI module for text-to-speech functionality.
 """ 

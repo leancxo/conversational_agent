@@ -3,45 +3,362 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{{ title }}</title>
-    <link rel="stylesheet" href="{{ url_for('static', path='/css/styles.css') }}">
+    <title>Conversational Agent</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        h1 {
+            text-align: center;
+            color: #333;
+        }
+        #chat-container {
+            height: 500px;
+            overflow-y: auto;
+            border: 1px solid #ddd;
+            padding: 20px;
+            margin-bottom: 20px;
+            background-color: white;
+            border-radius: 8px;
+        }
+        #input-container {
+            display: flex;
+            gap: 10px;
+        }
+        #text-input {
+            flex-grow: 1;
+            padding: 12px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 16px;
+        }
+        button {
+            padding: 12px 24px;
+            background-color: #007bff;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+        }
+        button:hover {
+            background-color: #0056b3;
+        }
+        .message {
+            margin-bottom: 15px;
+            padding: 10px;
+            border-radius: 8px;
+            max-width: 80%;
+        }
+        .user-message {
+            background-color: #007bff;
+            color: white;
+            margin-left: auto;
+        }
+        .bot-message {
+            background-color: #e9ecef;
+            color: #333;
+        }
+        .system-message {
+            background-color: #ffc107;
+            color: #333;
+            text-align: center;
+            margin: 10px auto;
+        }
+        .error-message {
+            background-color: #dc3545;
+            color: white;
+            text-align: center;
+            margin: 10px auto;
+        }
+        .mic-button {
+            padding: 12px;
+            background-color: #28a745;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 48px;
+        }
+        .mic-button:hover {
+            background-color: #218838;
+        }
+        .mic-button.recording {
+            background-color: #dc3545;
+            animation: pulse 1.5s infinite;
+        }
+        @keyframes pulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.1); }
+            100% { transform: scale(1); }
+        }
+        .mic-icon {
+            width: 20px;
+            height: 20px;
+        }
+        #connection-status {
+            text-align: center;
+            padding: 10px;
+            margin-bottom: 20px;
+            border-radius: 4px;
+        }
+        .connected {
+            background-color: #28a745;
+            color: white;
+        }
+        .disconnected {
+            background-color: #dc3545;
+            color: white;
+        }
+    </style>
 </head>
 <body>
-    <div class="container">
-        <header>
-            <h1>Conversational Agent</h1>
-            <div class="status-controls">
-                <div class="status-indicator">
-                    <span id="status-text">Disconnected</span>
-                    <div id="status-light" class="status-light"></div>
-                </div>
-                <button id="tts-toggle" class="tts-toggle" title="Toggle Text-to-Speech">
-                    <svg viewBox="0 0 24 24" width="24" height="24">
-                        <path fill="currentColor" d="M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02zM14 3.23v2.06c2.89.86 5 3.54 5 6.71s-2.11 5.85-5 6.71v2.06c4.01-.91 7-4.49 7-8.77s-2.99-7.86-7-8.77z"/>
-                    </svg>
-                </button>
-            </div>
-        </header>
-
-        <main>
-            <div id="chat-container">
-                <div id="chat-messages"></div>
-                <div class="input-container">
-                    <textarea id="message-input" placeholder="Type your message..."></textarea>
-                    <div class="controls">
-                        <button id="voice-input-btn" title="Voice Input">
-                            <svg viewBox="0 0 24 24" width="24" height="24">
-                                <path fill="currentColor" d="M12 14c1.66 0 3-1.34 3-3V5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3z"/>
-                                <path fill="currentColor" d="M17 11c0 2.76-2.24 5-5 5s-5-2.24-5-5H5c0 3.53 2.61 6.43 6 6.92V21h2v-3.08c3.39-.49 6-3.39 6-6.92h-2z"/>
-                            </svg>
-                        </button>
-                        <button id="send-btn">Send</button>
-                    </div>
-                </div>
-            </div>
-        </main>
+    <h1>Conversational Agent</h1>
+    <div id="connection-status" class="disconnected">Connecting to server...</div>
+    <div id="chat-container"></div>
+    <div id="input-container">
+        <input type="text" id="text-input" placeholder="Type your message..." onkeypress="handleKeyPress(event)">
+        <button class="mic-button" id="mic-button" onclick="toggleVoiceInput()">
+            <svg class="mic-icon" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M12 14c1.66 0 3-1.34 3-3V5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3z"/>
+                <path d="M17 11c0 2.76-2.24 5-5 5s-5-2.24-5-5H5c0 3.53 2.61 6.43 6 6.92V21h2v-3.08c3.39-.49 6-3.39 6-6.92h-2z"/>
+            </svg>
+        </button>
+        <button onclick="sendMessage()">Send</button>
     </div>
 
-    <script src="{{ url_for('static', path='/js/chat.js') }}"></script>
+    <script>
+        let ws = null;
+        const chatContainer = document.getElementById('chat-container');
+        const textInput = document.getElementById('text-input');
+        const micButton = document.getElementById('mic-button');
+        const connectionStatus = document.getElementById('connection-status');
+        let isProcessing = false;
+        let isRecording = false;
+        let reconnectAttempts = 0;
+        const maxReconnectAttempts = 5;
+        
+        function connect() {
+            if (ws && ws.readyState === WebSocket.OPEN) {
+                console.log('WebSocket already connected');
+                return;
+            }
+
+            const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+            const wsUrl = `${protocol}//${window.location.host}/ws`;
+            console.log('Connecting to WebSocket at:', wsUrl);
+            
+            ws = new WebSocket(wsUrl);
+            
+            ws.onopen = () => {
+                console.log('WebSocket connected');
+                connectionStatus.textContent = 'Connected to server';
+                connectionStatus.className = 'connected';
+                reconnectAttempts = 0;
+            };
+            
+            ws.onclose = () => {
+                console.log('WebSocket disconnected');
+                connectionStatus.textContent = 'Disconnected from server';
+                connectionStatus.className = 'disconnected';
+                ws = null;
+                
+                if (reconnectAttempts < maxReconnectAttempts) {
+                    reconnectAttempts++;
+                    console.log(`Attempting to reconnect (${reconnectAttempts}/${maxReconnectAttempts})...`);
+                    setTimeout(connect, 2000 * reconnectAttempts);
+                }
+            };
+            
+            ws.onerror = (error) => {
+                console.error('WebSocket error:', error);
+                addMessage('Error connecting to server', 'error');
+            };
+            
+            ws.onmessage = (event) => {
+                console.log('Received message:', event.data);
+                try {
+                    const response = JSON.parse(event.data);
+                    
+                    // Add the text response
+                    addMessage(response.text, 'bot');
+                    
+                    // Handle any error message
+                    if (response.error) {
+                        addMessage(response.error, 'error');
+                    }
+                    
+                    // Try to play audio if available
+                    if (response.audio_path) {
+                        playAudio(response.audio_path);
+                    }
+                    
+                    isProcessing = false;
+                } catch (error) {
+                    console.error('Error processing message:', error);
+                    addMessage('Error processing response', 'error');
+                    isProcessing = false;
+                }
+            };
+        }
+        
+        function addMessage(text, type = 'bot') {
+            const messageDiv = document.createElement('div');
+            messageDiv.className = `message ${type}-message`;
+            messageDiv.textContent = text;
+            chatContainer.appendChild(messageDiv);
+            chatContainer.scrollTop = chatContainer.scrollHeight;
+        }
+        
+        function sendMessage() {
+            const text = textInput.value.trim();
+            if (text && ws && ws.readyState === WebSocket.OPEN && !isProcessing) {
+                console.log('Sending message:', text);
+                isProcessing = true;
+                ws.send(JSON.stringify({ 
+                    text: text,
+                    require_audio: true
+                }));
+                addMessage(text, 'user');
+                textInput.value = '';
+                stopVoiceInput();
+            } else {
+                if (!ws || ws.readyState !== WebSocket.OPEN) {
+                    console.log('WebSocket not connected, attempting to reconnect...');
+                    connect();
+                }
+                if (isProcessing) {
+                    console.log('Still processing previous message...');
+                }
+            }
+        }
+        
+        function handleKeyPress(event) {
+            if (event.key === 'Enter' && !event.shiftKey) {
+                event.preventDefault();
+                sendMessage();
+            }
+        }
+        
+        function playAudio(audioPath) {
+            if (!audioPath) {
+                console.error('No audio path provided');
+                return;
+            }
+            
+            const audio = new Audio(`/audio/${audioPath}`);
+            
+            audio.oncanplaythrough = () => {
+                console.log('Audio loaded, playing...');
+                audio.play().catch(error => {
+                    console.error('Error playing audio:', error);
+                    addMessage('Error playing audio response', 'error');
+                });
+            };
+            
+            audio.onerror = (error) => {
+                console.error('Error loading audio:', error);
+                addMessage('Error loading audio response', 'error');
+            };
+            
+            audio.onended = () => {
+                console.log('Audio playback completed');
+                // Clean up the audio element
+                audio.src = '';
+                audio.remove();
+            };
+
+            // Set a timeout to handle cases where the audio fails to load
+            setTimeout(() => {
+                if (audio.readyState === 0) {  // HAVE_NOTHING
+                    console.error('Audio failed to load within timeout');
+                    addMessage('Audio response timed out', 'error');
+                    audio.src = '';
+                    audio.remove();
+                }
+            }, 5000);  // 5 second timeout
+        }
+        
+        // Initialize speech recognition
+        const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+        let recognition = null;
+        
+        if (SpeechRecognition) {
+            recognition = new SpeechRecognition();
+            recognition.continuous = false;
+            recognition.interimResults = false;
+            recognition.lang = 'en-US';
+            
+            recognition.onresult = (event) => {
+                const text = event.results[0][0].transcript;
+                console.log('Recognized text:', text);
+                textInput.value = text;
+                sendMessage();
+            };
+            
+            recognition.onerror = (event) => {
+                console.error('Speech recognition error:', event.error);
+                addMessage(`Error with voice input: ${event.error}`, 'error');
+                stopVoiceInput();
+            };
+            
+            recognition.onend = () => {
+                stopVoiceInput();
+            };
+        }
+        
+        function toggleVoiceInput() {
+            if (!SpeechRecognition) {
+                addMessage("Speech recognition is not supported in your browser.", 'error');
+                return;
+            }
+            
+            if (!isRecording) {
+                startVoiceInput();
+            } else {
+                stopVoiceInput();
+            }
+        }
+        
+        function startVoiceInput() {
+            if (!isRecording) {
+                recognition.start();
+                isRecording = true;
+                micButton.classList.add('recording');
+                addMessage("Listening...", 'system');
+            }
+        }
+        
+        function stopVoiceInput() {
+            if (isRecording) {
+                recognition.stop();
+                isRecording = false;
+                micButton.classList.remove('recording');
+            }
+        }
+
+        // Start connection when page loads
+        connect();
+        
+        // Add event listener for page visibility changes
+        document.addEventListener('visibilitychange', () => {
+            if (document.visibilityState === 'visible') {
+                console.log('Page became visible, checking connection...');
+                if (!ws || ws.readyState !== WebSocket.OPEN) {
+                    console.log('Reconnecting WebSocket...');
+                    connect();
+                }
+            }
+        });
+    </script>
 </body>
 </html> 
