@@ -34,5 +34,5 @@ plotly>=5.1.0  # For dashboard visualizations
 # Added from the code block
 pydantic>=2.11.3  # Updated for compatibility
 pydantic-settings>=2.1.0
-torch>=2.7.0
-torchaudio>=2.7.0 
+torch==2.6.0  # Updated for compatibility with nari-tts
+torchaudio==2.6.0  # Updated to match torch version 
