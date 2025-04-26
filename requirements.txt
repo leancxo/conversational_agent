@@ -13,7 +13,7 @@ SpeechRecognition>=3.8.1
 pyttsx3>=2.90
 sounddevice>=0.4.4
 numpy>=2.2.4  # Updated for compatibility with nari-tts
-soundfile==0.12.1
+soundfile>=0.13.1  # Updated for compatibility with nari-tts
 
 # Sentiment Analysis
 nltk>=3.6.3
