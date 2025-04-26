@@ -5,7 +5,7 @@ git+https://github.com/nari-labs/dia.git  # Dia framework for conversational AI
 fastapi>=0.115.2  # Updated for compatibility with Gradio
 uvicorn==0.24.0
 websockets==12.0
-python-multipart==0.0.6
+python-multipart>=0.0.18  # Updated for compatibility with Gradio
 jinja2>=3.0.1
 
 # Voice Processing
