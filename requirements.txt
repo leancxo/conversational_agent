@@ -34,5 +34,5 @@ plotly>=5.1.0  # For dashboard visualizations
 # Added from the code block
 pydantic==2.5.2
 pydantic-settings==2.1.0
-torch==2.1.2
-torchaudio==2.1.2 
+torch==2.1.2+cu118
+torchaudio==2.1.2+cu118 
