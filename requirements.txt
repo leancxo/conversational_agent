@@ -14,7 +14,6 @@ pyttsx3>=2.90
 sounddevice>=0.4.4
 numpy>=1.22.0,<1.27.0  # Adjusted for better compatibility
 soundfile==0.12.1
-nari-tts==0.0.1  # Added nari-tts package
 
 # Sentiment Analysis
 nltk>=3.6.3
@@ -35,6 +34,5 @@ plotly>=5.1.0  # For dashboard visualizations
 # Added from the code block
 pydantic==2.5.2
 pydantic-settings==2.1.0
-dia==0.1.0
 torch==2.1.2
 torchaudio==2.1.2 
